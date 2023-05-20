@@ -1,0 +1,42 @@
+version: "3.3"
+services:
+  reverse-proxy:
+    image: traefik:v2.10
+    container_name: "traefik"
+    networks:
+      - proxy
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  whoami:
+    image: traefik/whoami
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+
+  coffee:
+    image: sdaschner/quarkus-coffee:traefik-demo
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.coffee.rule=Host(`coffee.localhost`)"
+      - "traefik.http.routers.coffee.entrypoints=web"
+      - "traefik.http.services.coffee-service.loadbalancer.server.port=8080"
+
+networks:
+  proxy:
+    driver: bridge
+    external: true
