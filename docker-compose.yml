@@ -8,14 +8,14 @@ services:
     command:
       - "--log.level=INFO"
       - "--entrypoints.web.address=:80"
-      - "--entrypoints.web-secure.address=:443"
+      - "--entrypoints.websecure.address=:443"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--api=true"
       - "--api.dashboard=true"
       - "--providers.file.directory=/configuration/"
       - "--providers.file.watch=true"
-      - "--entrypoints.web.http.redirections.entryPoint.to=web-secure"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       - "--serversTransport.forwardingTimeouts.dialTimeout=2s"
       # - "--serverstransport.insecureskipverify=true"
@@ -26,9 +26,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.example.com`)"
       - "traefik.http.routers.reverse-proxy.service=api@internal"
-      - "traefik.http.routers.reverse-proxy.entrypoints=web-secure"
+      - "traefik.http.routers.reverse-proxy.entrypoints=websecure"
       - "traefik.http.routers.reverse-proxy.tls=true"
-      # - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"
       - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
       - "traefik.http.middlewares.redirect-middleware.redirectscheme.scheme=https"
       # - "traefik.http.routers.reverse-proxy.middlewares=auth"
@@ -62,6 +61,15 @@ services:
       - "traefik.http.services.coffee-service.loadbalancer.healthcheck.interval=2s"
       - "traefik.http.services.coffee-service.loadbalancer.healthcheck.timeout=2s"
 
+  nginx:
+    image: nginx
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.rule=Host(`nginx.example.com`)"
+      - "traefik.http.routers.nginx.tls=true"
+      - "traefik.http.services.nginx-service.loadbalancer.server.port=80"
 networks:
   proxy:
     driver: bridge
