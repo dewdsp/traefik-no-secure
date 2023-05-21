@@ -2,20 +2,40 @@ version: "3.3"
 services:
   reverse-proxy:
     image: traefik:v2.10
-    container_name: "traefik"
+    # container_name: "traefik"
     networks:
       - proxy
     command:
-      - "--log.level=DEBUG"
-      - "--api.insecure=true"
+      - "--log.level=INFO"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web-secure.address=:443"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--providers.file.directory=/configuration/"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.http.redirections.entryPoint.to=web-secure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--serversTransport.forwardingTimeouts.dialTimeout=2s"
+      # - "--serverstransport.insecureskipverify=true"
     ports:
       - "80:80"
-      - "8080:8080"
+      - "443:443"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.example.com`)"
+      - "traefik.http.routers.reverse-proxy.service=api@internal"
+      - "traefik.http.routers.reverse-proxy.entrypoints=web-secure"
+      - "traefik.http.routers.reverse-proxy.tls=true"
+      # - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.redirect-middleware.redirectscheme.scheme=https"
+      # - "traefik.http.routers.reverse-proxy.middlewares=auth"
+      # - "traefik.http.middlewares.auth.basicau.users=admin:$$2y$$05$Nf97SVPrrOpvu1MSSqyCu.ZnSkC.liqe5NRi/YBU7/anstf/94EN2"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configuration/:/configuration/
 
   whoami:
     image: traefik/whoami
@@ -23,18 +43,24 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
-      - "traefik.http.routers.whoami.entrypoints=web"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.example.com`)"
+      - "traefik.http.routers.whoami.tls=true"
+      - "traefik.http.services.whoami-service.loadbalancer.server.port=80"
 
   coffee:
     image: sdaschner/quarkus-coffee:traefik-demo
+    # container_name: coffee-$(date +%s)
     networks:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.coffee.rule=Host(`coffee.localhost`)"
-      - "traefik.http.routers.coffee.entrypoints=web"
+      # - "app=coffee"
+      - "traefik.http.routers.coffee.rule=Host(`coffee.example.com`)"
+      - "traefik.http.routers.coffee.tls=true"
       - "traefik.http.services.coffee-service.loadbalancer.server.port=8080"
+      - "traefik.http.services.coffee-service.loadbalancer.healthcheck.path=/q/health"
+      - "traefik.http.services.coffee-service.loadbalancer.healthcheck.interval=2s"
+      - "traefik.http.services.coffee-service.loadbalancer.healthcheck.timeout=2s"
 
 networks:
   proxy:

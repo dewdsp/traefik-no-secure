@@ -1,0 +1,4 @@
+tls:
+  certificates:
+    - certFile: /configuration/coffee.example.com.crt
+      keyFile: /configuration/coffee.example.com.key
